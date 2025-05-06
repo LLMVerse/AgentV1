@@ -222,19 +222,22 @@ def main():
         print_status(gpus, wallet, cpp_id, selected_gpus, gpu_percents)
         print("Options:")
         print("  1. Settings")
-        print("  2. Connect/Update CPP")
-        print("  3. Exit")
-        print("  4. Change CPP Type (current: %s)" % (
+        print("  2. Update CPP Settings")
+        print("  3. Change CPP Type (current: %s)" % (
             "Isolated" if cpp_type == "isolated" else f"Bundled ({target_ram}GB)" if target_ram else "Bundled"
         ))
-        print("  5. Remove all GPUs from pool")
+        print("  4. Remove all GPUs from pool")
+        print("  5. Exit")
         choice = input("Select an option: ").strip()
         if choice == "1":
             wallet, selected_gpus, gpu_percents = settings_menu(gpus, wallet, selected_gpus, gpu_percents)
             save_config(wallet, selected_gpus, gpu_percents, cpp_id)
         elif choice == "2":
-            if not wallet or not selected_gpus or not gpu_percents:
-                print("\nPlease set your wallet address and select GPUs in Settings first.")
+            if not wallet or wallet.strip() == "":
+                print("\nWARNING: You must set your Solana wallet payout address in Settings before updating CPP settings.")
+                continue
+            if not selected_gpus or not gpu_percents:
+                print("\nPlease select GPUs in Settings first.")
                 continue
             print("\nYou are about to connect the following GPUs to the CPP:")
             for idx in selected_gpus:
@@ -264,16 +267,20 @@ def main():
                 try:
                     node_id = register_agent(wallet, [g for g in gpus if g["index"] in selected_gpus], gpu_percents)
                     cpp_resp = create_cpp(node_id, [g for g in gpus if g["index"] in selected_gpus], gpu_percents, cpp_type, target_ram)
+                    # Confirmation message after backend response
+                    print("\nBackend has received your CPP update.")
                     if cpp_type == "isolated":
                         cpp_id = cpp_resp.get("cpp_ids", [None])[0]
-                        print(f"\nIsolated CPP connected! CPP ID: {cpp_id}")
+                        print(f"Isolated CPP connected! CPP ID: {cpp_id}")
                     else:
                         cpp_id = cpp_resp.get("cpp_id")
-                        print(f"\nBundled CPP joined! CPP ID: {cpp_id}")
+                        print(f"Bundled CPP joined! CPP ID: {cpp_id}")
                         print(f"Pool status: {cpp_resp['total_ram']}GB / {cpp_resp['target_ram']}GB")
                         if cpp_resp.get("is_full"):
                             print("Bundled pool is now FULL and available for jobs!")
                     save_config(wallet, selected_gpus, gpu_percents, cpp_id)
+                    # Always display current CPP ID after update
+                    print(f"Current CPP ID: {cpp_id}")
                 except Exception as e:
                     print(f"Error communicating with backend: {e}")
                     continue
@@ -289,9 +296,6 @@ def main():
             else:
                 print("Cancelled.")
         elif choice == "3":
-            print("Goodbye.")
-            break
-        elif choice == "4":
             print("Select CPP Type:")
             print("  1. Isolated (dedicate only your GPU(s))")
             print("  2. Bundled (join a shared pool of 100GB, 200GB, or 500GB RAM)")
@@ -320,11 +324,14 @@ def main():
                     target_ram = None
             else:
                 print("Invalid selection.")
-        elif choice == "5":
+        elif choice == "4":
             selected_gpus = []
             gpu_percents = {}
             save_config(wallet, selected_gpus, gpu_percents, cpp_id)
             print("All GPUs removed from pool.")
+        elif choice == "5":
+            print("Goodbye.")
+            break
         else:
             print("Invalid option.")
 
