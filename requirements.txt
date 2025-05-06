@@ -1,0 +1,6 @@
+# Requirements for both agent and backend (install from project root)
+pynvml
+fastapi
+uvicorn
+pydantic
+requests
